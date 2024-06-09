@@ -95,6 +95,26 @@ else
     fi
 fi
 
+# Install Google Chrome
+if is_installed_app "Google Chrome"; then
+    echo "Google Chrome is already installed."
+elif is_installed_cask "google-chrome"; then
+    echo "Google Chrome is already installed through Homebrew."
+else
+    echo "Installing Google Chrome from Homebrew..."
+    brew install --cask google-chrome
+fi
+
+# Install Firefox Developer Edition
+if is_installed_app "Firefox Developer Edition"; then
+    echo "Firefox Developer Edition is already installed."
+elif is_installed_cask "firefox-developer-edition"; then
+    echo "Firefox Developer Edition is already installed through Homebrew."
+else
+    echo "Installing Firefox Developer Edition from Homebrew..."
+    brew install --cask firefox-developer-edition
+fi
+
 # Inkscape
 if is_installed_app "Inkscape"; then
     echo "Inkscape is already installed."

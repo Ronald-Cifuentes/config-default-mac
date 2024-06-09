@@ -1,14 +1,9 @@
 #!/bin/bash
 
-# Ensure the script itself is executable
-chmod +x start_ssh_agent.sh
-
 # User details
-NAME="John Doe"
-MAIL=johndoe@example.com
-PASS=pass
-INIT_RSA=id_rsa_p_github
-
+NAME="Jhon Doe"
+MAIL="jhondoe@gmail.com"
+PASS="mypass"
 
 # Configure git global settings
 git config --global user.name "$NAME"
@@ -32,24 +27,57 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-# Generate SSH key if it doesn't exist
-if [ ! -f "$HOME/.ssh/$INIT_RSA" ]; then
-    ssh-keygen -t rsa -C "$MAIL" -f "$HOME/.ssh/$INIT_RSA" -N "$PASS"
-    if [ $? -ne 0 ]; then
-        echo "Failed to generate SSH key"
-        exit 1
-    fi
-else
-    echo "SSH key already exists"
-fi
 
 # Create SSH config file
 cat <<EOF > "$HOME/.ssh/config"
-# github account
+#######################
+#   github accounts   #
+#######################
+
 Host github.p.com
   HostName github.com
   PreferredAuthentications publickey
-  IdentityFile ~/.ssh/$INIT_RSA
+  IdentityFile ~/.ssh/id_rsa_p_github
+  UseKeychain yes
+  AddKeysToAgent yes
+
+Host github.r.com
+  HostName github.com
+  PreferredAuthentications publickey
+  IdentityFile ~/.ssh/id_rsa_r_github
+  UseKeychain yes
+  AddKeysToAgent yes
+
+######################
+#   gitlab accounts  #
+######################
+
+Host gitlab.p.com
+  HostName gitlab.com
+  PreferredAuthentications publickey
+  IdentityFile ~/.ssh/id_rsa_p_gitlab
+  UseKeychain yes
+  AddKeysToAgent yes
+
+##########################
+#   bitbucket accounts   #
+##########################
+
+Host bitbucket.p.org
+  HostName bitbucket.org
+  PreferredAuthentications publickey
+  IdentityFile ~/.ssh/id_rsa_p_bitbucket
+  UseKeychain yes
+  AddKeysToAgent yes
+
+######################
+#   azure accounts   #
+######################
+
+Host ssh.dev.azure.p.com
+  HostName ssh.dev.azure.com
+  PreferredAuthentications publickey
+  IdentityFile ~/.ssh/id_rsa_p_azure
   UseKeychain yes
   AddKeysToAgent yes
 EOF
@@ -59,43 +87,36 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Check if the SSH config file exists
+SSH_CONFIG="$HOME/.ssh/config"
+if [ ! -f "$SSH_CONFIG" ]; then
+  echo "SSH config file not found at $SSH_CONFIG"
+  exit 1
+fi
+
+
+# Function to create an RSA key pair with a passphrase
+create_rsa_key() {
+  local key_file="$1"
+  
+  # Expand ~ to the home directory path
+  key_file="${key_file/#\~/$HOME}"
+
+  if [ -f "$key_file" ]; then
+    echo "Key file $key_file already exists. Skipping..."
+  else
+    echo "Creating RSA key for $key_file..."
+    ssh-keygen -t rsa -b 2048 -f "$key_file" -N "$PASS"
+  fi
+}
+
+# Read the SSH config file and process IdentityFile entries
+while IFS= read -r line; do
+  if [[ "$line" =~ IdentityFile ]]; then
+    # Extract the path to the key file
+    key_file=$(echo "$line" | awk '{print $2}')
+    create_rsa_key "$key_file"
+  fi
+done < "$SSH_CONFIG"
+
 echo "SSH setup completed successfully"
-
-# Set environment variable to suppress deprecation warning
-export APPLE_SSH_ADD_BEHAVIOR="--apple-use-keychain"
-
-# Start the SSH agent
-eval "$(ssh-agent -s)"
-if [ $? -ne 0 ]; then
-    echo "Failed to start SSH agent"
-    exit 1
-fi
-
-# Add the SSH private key to the agent and macOS keychain
-/usr/bin/ssh-add --apple-use-keychain "$HOME/.ssh/$INIT_RSA"
-if [ $? -ne 0 ]; then
-    echo "Failed to add SSH key to the agent"
-    exit 1
-fi
-
-# Verify that the key has been added
-ssh-add -l
-if [ $? -ne 0 ]; then
-    echo "Failed to list SSH keys"
-    exit 1
-fi
-
-echo "SSH agent started and GitHub key added to macOS keychain."
-
-# Add the script to .zshrc for automatic startup
-if ! grep -q "source /path/to/start_ssh_agent.sh" "$HOME/.zshrc"; then
-    echo "source /path/to/start_ssh_agent.sh" >> "$HOME/.zshrc"
-    if [ $? -ne 0 ]; then
-        echo "Failed to add script to .zshrc"
-        exit 1
-    fi
-else
-    echo "Script already present in .zshrc"
-fi
-
-echo "SSH path added to .zshrc."

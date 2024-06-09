@@ -141,6 +141,13 @@ else
     echo "ChatGPT is already installed."
 fi
 
+# Install Anydesk
+if ! command_exists anydesk; then
+    echo "Installing Anydesk..."
+    brew install --cask anydesk
+else
+    echo "Anydesk is already installed."
+fi
 
 ##################################################################
 
